@@ -74,7 +74,9 @@ option_proc configure.objcxxflags portconfigure::stdlib_trace
 proc portconfigure::should_add_stdlib {} {
     set has_stdlib [expr {[option configure.cxx_stdlib] ne ""}]
     set is_clang [string match *clang* [option configure.cxx]]
-    return [expr {$has_stdlib && $is_clang}]
+    set is_clazy [string match *clazy* [option configure.cxx]]
+    set is_gccok  [string match {*g*-mp-[7]*} [option configure.cxx]]
+    return [expr {$has_stdlib && ($is_clang || $is_clazy || $is_gccok)}]
 }
 proc portconfigure::construct_cxxflags {flags} {
     if {[portconfigure::should_add_stdlib]} {
@@ -194,8 +196,12 @@ options configure.optflags \
 default configure.optflags      {-Os}
 default configure.cflags        {${configure.optflags}}
 default configure.objcflags     {${configure.optflags}}
-default configure.cppflags      {-I${prefix}/include}
-default configure.ldflags       {"-L${prefix}/lib -Wl,-headerpad_max_install_names"}
+default configure.cppflags      {-isystem${prefix}/include}
+if {${os.platform} eq "darwin"} {
+        default configure.ldflags   {"-L${prefix}/lib -Wl,-headerpad_max_install_names"}
+} else {
+        default configure.ldflags   {"-L${prefix}/lib -Wl,-R,${prefix}/lib"}
+}
 default configure.libs          {}
 default configure.fflags        {${configure.optflags}}
 default configure.f90flags      {${configure.optflags}}
@@ -270,6 +276,7 @@ proc portconfigure::configure_start {args} {
         {^llvm-gcc-4\.2$}                   {Xcode LLVM-GCC 4.2}
         {^macports-clang$}                  {MacPorts Clang (port select)}
         {^macports-clang-(\d+\.\d+)$}       {MacPorts Clang %s}
+        {^macports-clazy-(\d+\.\d+)$}       {MacPorts Clazy %s}
         {^macports-dragonegg-(\d+\.\d+)$}   {MacPorts DragonEgg %s}
         {^macports-dragonegg-(\d+\.\d+)-gcc-(\d+\.\d+)$}
             {MacPorts DragonEgg %s with GCC %s}
@@ -423,13 +430,19 @@ proc portconfigure::configure_get_universal_ldflags {} {
 
 # internal proc to determine if the compiler supports -arch
 proc portconfigure::arch_flag_supported {compiler} {
-    return [regexp {^gcc-4|llvm|apple|clang} $compiler]
+    global os.platform
+    if {${os.platform} eq "darwin"} {
+        return [regexp {^gcc-4|llvm|apple|clang} $compiler]
+    } else {
+        return 0
+    }
 }
 
 proc portconfigure::compiler_port_name {compiler} {
     set valid_compiler_ports {
         {^apple-gcc-(\d+)\.(\d+)$}                          {apple-gcc%s%s}
         {^macports-clang-(\d+\.\d+)$}                       {clang-%s}
+        {^macports-clazy-(\d+\.\d+)$}                       {clazy-%s}
         {^macports-dragonegg-(\d+\.\d+)(-gcc-\d+\.\d+)?$}   {dragonegg-%s%s}
         {^macports-(llvm-)?gcc-(\d+)(?:\.(\d+))?$}          {%sgcc%s%s}
     }
@@ -606,6 +619,16 @@ proc portconfigure::configure_get_compiler {type {compiler {}}} {
             objc    { return ${prefix}/bin/clang${suffix} }
             cxx     -
             objcxx  { return ${prefix}/bin/clang++${suffix} }
+        }
+    } elseif {[regexp {^macports-clazy(-\d+\.\d+)?$} $compiler -> suffix]} {
+        if {$suffix ne ""} {
+            set suffix "-mp${suffix}"
+        }
+        switch $type {
+            cc      -
+            objc    { return ${prefix}/bin/cclazy${suffix} }
+            cxx     -
+            objcxx  { return ${prefix}/bin/clazy${suffix} }
         }
     } elseif {[regexp {^macports-dragonegg(-\d+\.\d+)(?:-gcc(-\d+\.\d+))?$} $compiler \
                 -> infix suffix]} {

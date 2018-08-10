@@ -1957,11 +1957,13 @@ proc action_log { action portlist opts } {
 
 proc action_info { action portlist opts } {
     global global_variations
+    global global_options
     set status 0
     if {[require_portlist portlist]} {
         return 1
     }
 
+    set_phase "info"
     set separator ""
     foreachport $portlist {
         set index_only 0
@@ -2173,6 +2175,20 @@ proc action_info { action portlist opts } {
                 set inf "$portinfo(name) @"
                 append inf [composite_version $portinfo(version) $portinfo(active_variants)]
                 set ropt "fullname"
+            } elseif {$opt eq "var"} {
+                if {[info exists global_options(ports_info_var)]} {
+                    set opt ${global_options(ports_info_var)}
+                    set ropt $opt
+                    if {[info exists portinfo($opt)]} {
+                        set inf "$portinfo($opt)"
+                    } else {
+                        ui_error "variable \"$opt\" cannot be queried via info --var"
+                        return 1
+                    }
+                } else {
+                    ui_error "info --var requires a variable name"
+                    return 1
+                }
             } else {
                 # Map from friendly name
                 set ropt [map_friendly_field_names $opt]
@@ -2447,6 +2463,11 @@ proc action_notes { action portlist opts } {
 }
 
 
+proc macports::normalize { filename } {
+    set prefmap [list [file dirname [file normalize "${macports::prefix}/foo"]] ${macports::prefix}]
+    return [string map ${prefmap} [file normalize $filename]]
+}
+
 proc action_provides { action portlist opts } {
     # In this case, portname is going to be used for the filename... since
     # that is the first argument we expect... perhaps there is a better way
@@ -2456,7 +2477,7 @@ proc action_provides { action portlist opts } {
         return 1
     }
     foreach filename $portlist {
-        set file [file normalize $filename]
+        set file [macports::normalize $filename]
         if {[file exists $file] || ![catch {file type $file}]} {
             if {![file isdirectory $file] || [file type $file] eq "link"} {
                 set port [registry::file_registered $file]
@@ -2485,9 +2506,16 @@ proc action_activate { action portlist opts } {
     }
     foreachport $portlist {
         set composite_version [composite_version $portversion [array get variations]]
+        array set actoptions [array get options]
+        set force 0
+        if ([info exists actoptions(ports_force)]) {
+            if ([string is true -strict $actoptions(ports_force)]) {
+                set force 1
+            }
+        }
         if {![info exists options(ports_activate_no-exec)]
             && ![catch {set ilist [registry::installed $portname $composite_version]}]
-            && [llength $ilist] == 1} {
+            && ([llength $ilist] == 1 && !$force)} {
 
             set i [lindex $ilist 0]
             set regref [registry::entry open $portname [lindex $i 1] [lindex $i 2] [lindex $i 3] [lindex $i 5]]
@@ -2824,6 +2852,12 @@ proc action_version { action portlist opts } {
     }
     puts [macports::version]
     return 0
+}
+
+
+proc action_environment { action portlist opts } {
+    set status [macports::environment]
+    return $status
 }
 
 
@@ -3942,7 +3976,7 @@ proc action_portcmds { action portlist opts } {
                     set editor_var "ports_${action}_editor"
                     if {[info exists local_options($editor_var)]} {
                         set editor [join $local_options($editor_var)]
-                    } else {
+                    } elseif {![macports::global_option_isset ports_force]} {
                         foreach ed { MP_EDITOR VISUAL EDITOR } {
                             if {[info exists env($ed)]} {
                                 set editor $env($ed)
@@ -4028,6 +4062,39 @@ proc action_portcmds { action portlist opts } {
                         }
                     } else {
                         ui_error [format "No homepage for %s" $portname]
+                    }
+                }
+                history {
+                    set tmpdir [pwd]
+                    if {[file exists "/tmp"]} {set tmpdir "/tmp"}
+                    catch {set tmpdir $::env(TMPDIR)}
+                    set tmpfname [file join $tmpdir [join [list $portname "-history-" [pid] ".log"] ""]]
+                    puts "Commit history for port:$portname ($portfile):\n"
+                    if {[macports::ui_isset ports_verbose]} {
+                        # include diffs
+                        set opt "--color=always -p"
+                    } else {
+                        # include just a summary of the changes
+                        set opt "--no-color --summary"
+                    }
+                    if {[catch {system -W $portdir \
+                        "git log --decorate=full --source --full-diff $opt . > $tmpfname"} \
+                        result]} {
+                        ui_debug $::errorInfo
+                        file delete -force $tmpfname
+                        break_softcontinue "unable to invoke git: $result" 1 status
+                    }
+                    if {[file exists $tmpfname]} {
+                        if {[catch {set fp [open $tmpfname r]} result]} {
+                            break_softcontinue "Could not open file $tmpfname: $result" 1 status
+                        }
+                        set history [read $fp]
+                        set history [split $history "\n"]
+                        foreach line $history {
+                            puts "$line"
+                        }
+                        close $fp
+                        file delete -force $tmpfname
                     }
                 }
             }
@@ -4251,6 +4318,7 @@ array set action_array [list \
     diagnose    [list action_diagnose       [ACTION_ARGS_NONE]] \
     \
     version     [list action_version        [ACTION_ARGS_NONE]] \
+    environment [list action_environment    [ACTION_ARGS_NONE]] \
     platform    [list action_platform       [ACTION_ARGS_NONE]] \
     \
     uninstall   [list action_uninstall      [ACTION_ARGS_PORTS]] \
@@ -4279,6 +4347,7 @@ array set action_array [list \
     file        [list action_portcmds       [ACTION_ARGS_PORTS]] \
     logfile     [list action_portcmds       [ACTION_ARGS_PORTS]] \
     gohome      [list action_portcmds       [ACTION_ARGS_PORTS]] \
+    history     [list action_portcmds       [ACTION_ARGS_PORTS]] \
     \
     fetch       [list action_target         [ACTION_ARGS_PORTS]] \
     checksum    [list action_target         [ACTION_ARGS_PORTS]] \
@@ -4305,6 +4374,9 @@ array set action_array [list \
     mdmg        [list action_target         [ACTION_ARGS_PORTS]] \
     mpkg        [list action_target         [ACTION_ARGS_PORTS]] \
     pkg         [list action_target         [ACTION_ARGS_PORTS]] \
+    dpkg        [list action_target         [ACTION_ARGS_PORTS]] \
+    rpm         [list action_target         [ACTION_ARGS_PORTS]] \
+    srpm        [list action_target         [ACTION_ARGS_PORTS]] \
     \
     quit        [list action_exit           [ACTION_ARGS_NONE]] \
     exit        [list action_exit           [ACTION_ARGS_NONE]] \
@@ -4384,7 +4456,7 @@ array set cmd_opts_array {
                  depends description epoch fullname heading homepage index license
                  line long_description
                  maintainer maintainers name patchfiles platform platforms portdir
-                 pretty replaced_by revision subports variant variants version}
+                 pretty replaced_by revision subports variant variants version {var 1}}
     contents    {size {units 1}}
     deps        {index no-build}
     rdeps       {index no-build full}
@@ -4462,6 +4534,8 @@ proc parse_options { action ui_options_name global_options_name } {
     upvar $ui_options_name ui_options
     upvar $global_options_name global_options
 
+    # RJVB
+    set global_options(ports_ignore_different) yes
     while {[moreargs]} {
         set arg [lookahead]
 
@@ -4508,6 +4582,9 @@ proc parse_options { action ui_options_name global_options_name } {
             set opts [string range $arg 1 end]
             foreach c [split $opts {}] {
                 switch -- $c {
+                    e {
+                        set ui_options(ports_env) yes
+                    }
                     v {
                         set ui_options(ports_verbose) yes
                     }

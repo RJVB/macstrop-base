@@ -95,6 +95,59 @@ proc macports::version {} {
     return ${macports::autoconf::macports_version}
 }
 
+##
+# Return the port environment variables.
+proc macports::environment {} {
+    set mpenv {}
+    if {![macports::ui_isset ports_quiet]} {
+        lappend mpenv "$macports::ui_prefix port_cmd_version:  ${macports::autoconf::macports_version}"
+    } else {
+        lappend mpenv "port_cmd_version  ${macports::autoconf::macports_version}"
+    }
+    if {[info exists macports::bootstrap_options]} {
+        foreach bootstrap_option [lsort $macports::bootstrap_options] {
+            if {[info exists macports::$bootstrap_option]} {
+                if {![macports::ui_isset ports_quiet]} {
+                    lappend mpenv "$macports::ui_prefix bootstrap_options: $bootstrap_option: [set macports::$bootstrap_option]"
+                } else {
+                    lappend mpenv "bootstrap_options $bootstrap_option [set macports::$bootstrap_option]"
+                }
+            }
+        }
+    }
+    if {[info exists macports::sources]} {
+        foreach source $macports::sources {
+            if {![macports::ui_isset ports_quiet]} {
+                lappend mpenv "$macports::ui_prefix port_tree_sources: $source"
+            } else {
+                lappend mpenv "port_tree_sources $source"
+            }
+        }
+    }
+    if {[info exists macports::global_variations]} {
+        set gvl {}
+        foreach {variation mode} [array get macports::global_variations] {
+            lappend gvl $mode$variation
+        }
+        if {![macports::ui_isset ports_quiet]} {
+            lappend mpenv "$macports::ui_prefix global_variations: [join $gvl { }]"
+        } else {
+            lappend mpenv "global_variations [join $gvl { }]"
+        }
+    }
+    set shenv {}
+    foreach keyval [exec /usr/bin/printenv] {
+        lappend shenv $keyval
+    }
+    if {![macports::ui_isset ports_quiet]} {
+        lappend mpenv "$macports::ui_prefix shell environment: [join $shenv { }]"
+    } else {
+        lappend mpenv "shell environment [join $shenv { }]"
+    }
+    ui_msg "[join $mpenv \n]"
+    return 0
+}
+
 # Provided UI instantiations
 # For standard messages, the following priorities are defined
 #     debug, info, msg, warn, error
@@ -153,8 +206,8 @@ proc macports::ch_logging {mport} {
 
     set ::debuglogname $logname
 
-    # Append to the file if it already exists
-    set ::debuglog [open $::debuglogname a]
+    # Truncate to the file if it already exists
+    set ::debuglog [open $::debuglogname w]
     puts $::debuglog version:1
 }
 proc macports::push_log {mport} {
@@ -225,6 +278,13 @@ proc ui_message {priority prefix args} {
            error "$hint\nusage: ui_message priority prefix ?-nonewline? string"
        }
     } 
+
+    # adopt msg priority if the current phase equals the current priority
+    # this can only happen for ui_info during `port info` (currently).
+    if {[info exists macports::current_phase]
+        && ${macports::current_phase} eq ${priority}} {
+        set priority "msg"
+    }
 
     foreach chan $macports::channels($priority) {
         if {[lindex $args 0] eq "-nonewline"} {
@@ -571,12 +631,15 @@ proc mportinit {{up_ui_options {}} {up_options {}} {up_variations {}}} {
         macports::ui_init $priority
     }
 
+    global tcl_platform
     package require Pextlib 1.0
     package require registry 1.0
     package require registry2 2.0
-    package require machista 1.0
+    if {[string tolower $tcl_platform(os)] eq "darwin"} {
+        package require machista 1.0
+    }
 
-    global auto_path env tcl_platform \
+    global auto_path env \
         macports::autoconf::macports_conf_path \
         macports::macports_user_dir \
         macports::bootstrap_options \
@@ -631,12 +694,23 @@ proc mportinit {{up_ui_options {}} {up_options {}} {up_variations {}}} {
 
     # set up platform info variables
     set os_arch $tcl_platform(machine)
+    set os_platform [string tolower $tcl_platform(os)]
     if {$os_arch eq "Power Macintosh"} {set os_arch "powerpc"}
-    if {$os_arch eq "i586" || $os_arch eq "i686" || $os_arch eq "x86_64"} {set os_arch "i386"}
+    # on Linux we either need to leave os_arch set to x86_64, or set build_arch to x86_64 in macports.conf
+    if {${os_platform} eq "linux"} {
+        if {$os_arch eq {i586} || $os_arch eq {i686}} {set os_arch "i386"}
+    } else {
+        if {$os_arch eq "i586" || $os_arch eq "i686" || $os_arch eq "x86_64"} {set os_arch "i386"}
+    }
     set os_version $tcl_platform(osVersion)
     set os_major [lindex [split $os_version .] 0]
+    if {${os_platform} eq "linux" && (${os_major} > 3) } {
+        # RJVB : on Linux, 2.x kernels may need special treatment, but booting
+        # a 3.x or 4.x kernel (or later, presumably) doesn't make enough difference
+        # for the userland to justify upgrading all ports.
+        set os_major 3
+    }
     set os_minor [lindex [split $os_version .] 1]
-    set os_platform [string tolower $tcl_platform(os)]
     # Remove trailing "Endian"
     set os_endian [string range $tcl_platform(byteOrder) 0 end-6]
     set macosx_version {}
@@ -650,7 +724,7 @@ proc mportinit {{up_ui_options {}} {up_options {}} {up_variations {}}} {
     }
 
     # Check that the current platform is the one we were configured for, otherwise need to do migration
-    if {($os_platform ne $macports::autoconf::os_platform) || ($os_major != $macports::autoconf::os_major)} {
+    if {($os_platform ne $macports::autoconf::os_platform) || (($os_major != $macports::autoconf::os_major) && $os_platform ne "linux")} {
         ui_error "Current platform \"$os_platform $os_major\" does not match expected platform \"$macports::autoconf::os_platform $macports::autoconf::os_major\""
         ui_error "If you upgraded your OS, please follow the migration instructions: https://trac.macports.org/wiki/Migration"
         return -code error "OS platform mismatch"
@@ -702,6 +776,9 @@ proc mportinit {{up_ui_options {}} {up_options {}} {up_variations {}}} {
                     if {$option in $bootstrap_options} {
                         set macports::$option [string trim $val]
                         global macports::$option
+                        if {[info exists macports::ui_options(ports_env)]} {
+                            ui_msg "$macports::ui_prefix $file: ${option}: [set macports::$option]"
+                        }
                     }
                 }
             }
@@ -718,6 +795,9 @@ proc mportinit {{up_ui_options {}} {up_options {}} {up_variations {}}} {
                 if {$option in $user_options} {
                     set macports::$option $val
                     global macports::$option
+                    if {[info exists macports::ui_options(ports_env)]} {
+                        ui_msg "$macports::ui_prefix user: ${option}: [set macports::$option]"
+                    }
                 }
             }
         }
@@ -734,7 +814,7 @@ proc mportinit {{up_ui_options {}} {up_options {}} {up_variations {}}} {
             if {[regexp {^([\w-]+://\S+)(?:\s+\[(\w+(?:,\w+)*)\])?$} $line _ url flags]} {
                 set flags [split $flags ,]
                 foreach flag $flags {
-                    if {$flag ni [list nosync default]} {
+                    if {$flag ni [list nosync default own_portgroups_first]} {
                         ui_warn "$sources_conf source '$line' specifies invalid flag '$flag'"
                     }
                     if {$flag eq "default"} {
@@ -745,6 +825,9 @@ proc mportinit {{up_ui_options {}} {up_options {}} {up_variations {}}} {
                     }
                 }
                 lappend sources [concat [list $url] $flags]
+                if {[info exists macports::ui_options(ports_env)]} {
+                    ui_msg "$macports::ui_prefix $sources_conf: [lindex $sources end]"
+                }
             } else {
                 ui_warn "$sources_conf specifies invalid source '$line', ignored."
             }
@@ -1215,9 +1298,9 @@ proc mportinit {{up_ui_options {}} {up_options {}} {up_variations {}}} {
         set default_source_url [lindex $sources_default 0]
         if {[macports::getprotocol $default_source_url] eq "file" || [macports::getprotocol $default_source_url] eq "rsync"} {
             set default_portindex [macports::getindex $default_source_url]
-            if {[file exists $default_portindex] && [clock seconds] - [file mtime $default_portindex] > 1209600} {
-                ui_warn "port definitions are more than two weeks old, consider updating them by running 'port selfupdate'."
-            }
+#             if {[file exists $default_portindex] && [clock seconds] - [file mtime $default_portindex] > 1209600} {
+#                 ui_warn "port definitions are more than two weeks old, consider updating them by running 'port selfupdate'."
+#             }
         }
     }
 
@@ -1353,6 +1436,8 @@ proc macports::worker_init {workername portpath porturl portbuildpath options va
     $workername alias getportresourcepath macports::getportresourcepath
     $workername alias getportlogpath macports::getportlogpath
     $workername alias getdefaultportresourcepath macports::getdefaultportresourcepath
+    $workername alias getlocalporttreelist macports::getlocalporttreelist
+    $workername alias getlocaltreeoptions macports::getlocaltreeoptions
     $workername alias getprotocol macports::getprotocol
     $workername alias getportdir macports::getportdir
     $workername alias findBinary macports::findBinary
@@ -1688,6 +1773,35 @@ proc macports::getdefaultportresourcepath {{path {}}} {
     return $proposedpath
 }
 
+##
+# @return the list of local port trees
+#
+proc macports::getlocalporttreelist {} {
+    global macports::sources
+    set sourcetreelist {}
+    foreach source $sources {
+        if {[macports::getprotocol $source] eq "file"} {
+            lappend sourcetreelist [string range [lindex ${source} 0] 7 end]
+        }
+    }
+    return ${sourcetreelist}
+}
+
+##
+# @return the options for local port tree @param tree
+#
+proc macports::getlocaltreeoptions {path} {
+    global macports::sources
+    set sourcetreelist {}
+    set path [file normalize ${path}]
+    foreach source $sources {
+        set spath [file normalize [string range [lindex ${source} 0] 7 end]]
+        if {${spath} eq ${path}} {
+            return [lrange ${source} 1 end]
+        }
+    }
+    return {}
+}
 
 ##
 # Opens a MacPorts portfile specified by a URL. The URL can be local (starting
@@ -2249,7 +2363,7 @@ proc macports::_upgrade_mport_deps {mport target} {
                                     ui_error "its dependency $dep_portname is only installed for the arch '$active_archs'"
                                     ui_error "and the configured universal_archs '$macports::universal_archs' are not sufficient."
                                     return -code error "architecture mismatch"
-                                } else {
+                                } elseif {${macports::os_platform} eq "darwin"} {
                                     # upgrade the dep with +universal
                                     lappend variants universal +
                                     lappend options ports_upgrade_enforce-variants yes
@@ -3522,7 +3636,10 @@ proc macports::_target_needs_deps {target} {
         dmg -
         mdmg -
         pkg -
-        mpkg {return 1}
+        mpkg -
+        rpm -
+        dpkg -
+        srpm {return 1}
         default {return 0}
     }
 }
@@ -3537,7 +3654,10 @@ proc macports::_deptypes_for_target {target workername} {
         configure   -
         build       {return "depends_fetch depends_extract depends_build depends_lib"}
         test        {return "depends_fetch depends_extract depends_build depends_lib depends_run depends_test"}
+        srpm        -
         destroot    {return "depends_fetch depends_extract depends_build depends_lib depends_run"}
+        rpm         -
+        dpkg        -
         dmg         -
         pkg         -
         mdmg        -
@@ -3778,7 +3898,13 @@ proc macports::_upgrade {portname dspec variationslist optionslist {depscachenam
     }
     set requestedflag [registry::property_retrieve $regref requested]
     set os_platform_installed [registry::property_retrieve $regref os_platform]
-    set os_major_installed [registry::property_retrieve $regref os_major]
+    if {$macports::os_platform eq "darwin"} {
+        set os_major_installed [registry::property_retrieve $regref os_major]
+    } else {
+        # esp. on Linux there's no point in looking at the kernel version
+	   global macports::os_major
+        set os_major_installed ${macports::os_major}
+    }
 
     # Before we do
     # dependencies, we need to figure out the final variants,
@@ -4451,6 +4577,7 @@ proc macports::revupgrade {opts} {
 # @return 1 if ports were rebuilt and this function should be called again,
 #         0 otherwise.
 proc macports::revupgrade_scanandrebuild {broken_port_counts_name opts} {
+    global macports::os_platform
     upvar $broken_port_counts_name broken_port_counts
     array set options $opts
 
@@ -4517,7 +4644,7 @@ proc macports::revupgrade_scanandrebuild {broken_port_counts_name opts} {
     set broken_files {};
     set binaries [registry::file search active 1 binary 1]
     set binary_count [llength $binaries]
-    if {$binary_count > 0} {
+    if {$binary_count > 0 && $macports::os_platform eq "darwin"} {
         ui_msg "$macports::ui_prefix Scanning binaries for linking errors"
         set handle [machista::create_handle]
         if {$handle eq "NULL"} {

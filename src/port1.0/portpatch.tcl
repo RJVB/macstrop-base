@@ -68,7 +68,7 @@ proc portpatch::build_getpatchtype {args} {
 }
 
 proc portpatch::patch_main {args} {
-    global UI_PREFIX
+    global UI_PREFIX target_state_fd
 
     # First make sure that patchfiles exists and isn't stubbed out.
     if {![exists patchfiles] || [option patchfiles] eq ""} {
@@ -94,12 +94,18 @@ proc portpatch::patch_main {args} {
     set gzcat "[findBinary gzip $portutil::autoconf::gzip_path] -dc"
     set bzcat "[findBinary bzip2 $portutil::autoconf::bzip2_path] -dc"
     foreach patch $patchlist {
-        ui_info "$UI_PREFIX [format [msgcat::mc "Applying %s"] [file tail $patch]]"
-        switch -- [file extension $patch] {
-            .Z -
-            .gz {command_exec patch "$gzcat \"$patch\" | (" ")"}
-            .bz2 {command_exec patch "$bzcat \"$patch\" | (" ")"}
-            default {command_exec patch "" "< '$patch'"}
+        set pfile [file tail $patch]
+        if {![check_statefile patch $pfile $target_state_fd]} {
+            ui_info "$UI_PREFIX [format [msgcat::mc "Applying %s"] $pfile]"
+            switch -- [file extension $patch] {
+                .Z -
+                .gz {command_exec patch "$gzcat \"$patch\" | (" ")"}
+                .bz2 {command_exec patch "$bzcat \"$patch\" | (" ")"}
+                default {command_exec patch "" "< '$patch'"}
+            }
+            write_statefile patch $pfile $target_state_fd
+        } else {
+            ui_info "$UI_PREFIX [format [msgcat::mc "Skipping already applied %s"] $pfile]"
         }
     }
     return 0
