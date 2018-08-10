@@ -97,6 +97,7 @@ proc activate {name {version ""} {revision ""} {variants 0} {optionslist ""}} {
         set registry_open yes
     }
     set todeactivate [list]
+    set actaction "Activating"
 
     registry::read {
 
@@ -125,7 +126,12 @@ proc activate {name {version ""} {revision ""} {variants 0} {optionslist ""}} {
             return -code error "Image error: Can't find image file $location"
         }
         if {[$requested state] eq "installed"} {
-            return -code error "Image error: ${name} @${specifier} is already active."
+            if {$force} {
+                set actaction "Reactivating"
+                lappend todeactivate $requested
+            } else {
+                return -code error "Image error: ${name} @${specifier} is already active."
+            }
         }
     }
     foreach a $todeactivate {
@@ -134,7 +140,7 @@ proc activate {name {version ""} {revision ""} {variants 0} {optionslist ""}} {
         }
     }
 
-    ui_msg "$UI_PREFIX [format [msgcat::mc "Activating %s @%s"] $name $specifier]"
+    ui_msg "$UI_PREFIX [format [msgcat::mc "$actaction %s @%s"] $name $specifier]"
 
     _activate_contents $requested $rename_list
 }
