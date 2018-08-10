@@ -274,6 +274,11 @@ static copy_needed_return_t copy_needed(const char *path, char *const argv[],
 }
 
 static char *lazy_copy(const char *path, struct stat *in_st) {
+#ifndef SF_RESTRICTED
+    (void) path;
+    (void) in_st;
+    return NULL;
+#else
     char *retval = NULL;
     uid_t euid = geteuid();
     int outfd = -1;
@@ -442,6 +447,7 @@ lazy_copy_out:
         free(target_path);
     }
     return retval;
+#endif // SF_RESTRICTED
 }
 
 /**
