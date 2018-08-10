@@ -211,8 +211,12 @@ options configure.optflags \
 default configure.optflags      {-Os}
 default configure.cflags        {${configure.optflags}}
 default configure.objcflags     {${configure.optflags}}
-default configure.cppflags      {-I${prefix}/include}
-default configure.ldflags       {"-L${prefix}/lib -Wl,-headerpad_max_install_names"}
+default configure.cppflags      {-isystem${prefix}/include}
+if {[option os.platform] eq "darwin"} {
+        default configure.ldflags {"-L${prefix}/lib -Wl,-headerpad_max_install_names"}
+} else {
+        default configure.ldflags {"-L${prefix}/lib -Wl,-R,${prefix}/lib"}
+}
 default configure.libs          {}
 default configure.fflags        {${configure.optflags}}
 default configure.f90flags      {${configure.optflags}}
