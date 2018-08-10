@@ -44,7 +44,8 @@ default portsandbox_profile {}
 proc portsandbox::set_profile {target} {
     global os.major portsandbox_profile workpath distpath \
         package.destpath configure.ccache ccache_dir \
-        sandbox_network configure.distcc porttrace
+        sandbox_network configure.distcc porttrace \
+        rpm.srcdir rpm.tmpdir
 
     switch $target {
         activate -
@@ -74,6 +75,10 @@ proc portsandbox::set_profile {target} {
             } else {
                 set allow_dirs [list ${package.destpath}]
             }
+        }
+        rpm -
+        srpm {
+            set allow_dirs [list ${rpm.srcdir} ${rpm.tmpdir}]
         }
     }
 
