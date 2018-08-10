@@ -769,28 +769,36 @@ proc variant_desc {porturl variant} {
 # Portfile level procedure to provide support for declaring platform-specifics
 # Basically, just a fancy 'if', so that Portfiles' platform declarations can
 # be more readable, and support arch and version specifics
-proc platform {args} {
+proc platform {os args} {
     global os.platform os.subplatform os.arch os.major
 
-    set len [llength $args]
-    if {$len < 2} {
+    if {[llength $args] < 1} {
         return -code error "Malformed platform specification"
     }
-    set code [lindex $args end]
-    set os [lindex $args 0]
-    set args [lrange $args 1 [expr {$len - 2}]]
+    set len 1
+    if {[lindex $args end-1] eq "else"} {
+        set code [lindex $args end-2]
+        set altcode [lindex $args end]
+        set consumed 3
+    } else {
+        set code [lindex $args end]
+        set altcode ""
+        set consumed 1
+    }
 
-    foreach arg $args {
+    foreach arg [lrange $args 0 end-$consumed]  {
         if {[regexp {(^[0-9]+$)} $arg match result]} {
             set release $result
+            set len [expr $len + 1]
         } elseif {[regexp {([a-zA-Z0-9]*)} $arg match result]} {
             set arch $result
+            set len [expr $len + 1]
         }
     }
 
     set match 0
     # 'os' could be a platform or an arch when it's alone
-    if {$len == 2 && ($os eq ${os.platform} || $os eq ${os.subplatform} || $os eq ${os.arch})} {
+    if {$len == 1 && ($os eq ${os.platform} || $os eq ${os.subplatform} || $os eq ${os.arch})} {
         set match 1
     } elseif {($os eq ${os.platform} || $os eq ${os.subplatform})
               && (![info exists release] || ${os.major} == $release)
@@ -801,6 +809,8 @@ proc platform {args} {
     # Execute the code if this platform matches the platform we're on
     if {$match} {
         uplevel 1 $code
+    } elseif {${altcode} ne ""} {
+        uplevel 1 $altcode
     }
 }
 
