@@ -4498,6 +4498,8 @@ proc parse_options { action ui_options_name global_options_name } {
     upvar $ui_options_name ui_options
     upvar $global_options_name global_options
 
+    # RJVB
+    set global_options(ports_ignore_different) yes
     while {[moreargs]} {
         set arg [lookahead]
 
