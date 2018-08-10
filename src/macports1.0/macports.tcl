@@ -2421,7 +2421,7 @@ proc macports::_upgrade_mport_deps {mport target} {
                                     ui_error "its dependency $dep_portname is only installed for the arch '$active_archs'"
                                     ui_error "and the configured universal_archs '$macports::universal_archs' are not sufficient."
                                     return -code error "architecture mismatch"
-                                } else {
+                                } elseif {${macports::os_platform} eq "darwin"} {
                                     # upgrade the dep with +universal
                                     lappend variants universal +
                                     lappend options ports_upgrade_enforce-variants yes
