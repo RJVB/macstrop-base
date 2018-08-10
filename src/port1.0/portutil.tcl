@@ -2569,12 +2569,29 @@ proc PortGroup {group version} {
         }
     }
 
-    set groupFile [getportresourcepath $porturl "port1.0/group/${group}-${version}.tcl"]
+    # optionally look first in the port's own tree (the old default behaviour)
+    set ownfirst [lsearch [getlocaltreeoptions [file dirname [getportresourcepath $porturl]]] own_portgroups_first]
+    if {${ownfirst} >= 0} {
+        # check if the requested PortGroup exists in the current port's ports tree, but
+        # don't return a fallback variant.
+        set groupFile [getportresourcepath $porturl "port1.0/group/${group}-${version}.tcl" no]
+    }
+    if {![info exists groupFile] || ![file exists ${groupFile}]} {
+        # no luck, scan the ports tree list in much the same way port lookup works:
+        # test each tree in the order they are listed in sources.conf, until a hit is found.
+        set sources [getlocalporttreelist]
+        foreach source ${sources} {
+            set groupFile [file join ${source} _resources port1.0/group/${group}-${version}.tcl]
+            if {[file exists ${groupFile}]} {
+                break
+            }
+        }
+    }
 
     if {[file exists $groupFile]} {
         lappend PortInfo(portgroups) [list $group $version $groupFile]
         uplevel "source $groupFile"
-        ui_debug "Sourcing PortGroup $group $version from $groupFile"
+        ui_debug "Sourced PortGroup $group $version from $groupFile"
     } else {
         lappend PortInfo(portgroups) [list $group $version ""]
         ui_warn "PortGroup ${group} ${version} could not be located. ${group}-${version}.tcl does not exist."
