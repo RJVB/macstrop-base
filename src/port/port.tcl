@@ -2439,6 +2439,11 @@ proc action_notes { action portlist opts } {
 }
 
 
+proc macports::normalize { filename } {
+    set prefmap [list [file dirname [file normalize "${macports::prefix}/foo"]] ${macports::prefix}]
+    return [string map ${prefmap} [file normalize $filename]]
+}
+
 proc action_provides { action portlist opts } {
     # In this case, portname is going to be used for the filename... since
     # that is the first argument we expect... perhaps there is a better way
@@ -2448,7 +2453,7 @@ proc action_provides { action portlist opts } {
         return 1
     }
     foreach filename $portlist {
-        set file [file normalize $filename]
+        set file [macports::normalize $filename]
         if {[file exists $file] || ![catch {file type $file}]} {
             if {![file isdirectory $file] || [file type $file] eq "link"} {
                 set port [registry::file_registered $file]
