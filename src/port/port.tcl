@@ -3981,7 +3981,7 @@ proc action_portcmds { action portlist opts } {
                     set editor_var "ports_${action}_editor"
                     if {[info exists local_options($editor_var)]} {
                         set editor [join $local_options($editor_var)]
-                    } else {
+                    } elseif {![macports::global_option_isset ports_force]} {
                         foreach ed { MP_EDITOR VISUAL EDITOR } {
                             if {[info exists env($ed)]} {
                                 set editor $env($ed)
