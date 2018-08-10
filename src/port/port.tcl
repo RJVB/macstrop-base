@@ -1919,6 +1919,7 @@ proc action_info { action portlist opts } {
         return 1
     }
 
+    set_phase "info"
     set separator ""
     foreachport $portlist {
         set index_only 0
