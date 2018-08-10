@@ -90,6 +90,7 @@ proc handle_option {option args} {
 
     if {![info exists user_options($option)]} {
         set $option $args
+        options_export $option
     }
 }
 
@@ -107,6 +108,7 @@ proc handle_option-append {option args} {
         } else {
             set $option $args
         }
+        options_export $option
     }
 }
 
@@ -124,6 +126,7 @@ proc handle_option-prepend {option args} {
         } else {
             set $option $args
         }
+        options_export $option
     }
 }
 
@@ -141,6 +144,7 @@ proc handle_option-delete {option args} {
             set temp [ldelete $temp $val]
         }
         set $option $temp
+        options_export $option
     }
 }
 
@@ -158,6 +162,7 @@ proc handle_option-strsed {option args} {
             set temp [strsed $temp $val]
         }
         set $option $temp
+        options_export $option
     }
 }
 
@@ -187,6 +192,7 @@ proc handle_option-replace {option args} {
                 continue
             }
             set $option [lreplace [set $option] $index $index $new]
+            options_export $option
         }
     }
 }

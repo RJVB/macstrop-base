@@ -1913,6 +1913,7 @@ proc action_log { action portlist opts } {
 
 proc action_info { action portlist opts } {
     global global_variations
+    global global_options
     set status 0
     if {[require_portlist portlist]} {
         return 1
@@ -2135,6 +2136,20 @@ proc action_info { action portlist opts } {
                 set inf "$portinfo(name) @"
                 append inf [composite_version $portinfo(version) $portinfo(active_variants)]
                 set ropt "fullname"
+            } elseif {$opt eq "var"} {
+                if {[info exists global_options(ports_info_var)]} {
+                    set opt ${global_options(ports_info_var)}
+                    set ropt $opt
+                    if {[info exists portinfo($opt)]} {
+                        set inf "$portinfo($opt)"
+                    } else {
+                        ui_error "variable \"$opt\" cannot be queried via info --var"
+                        return 1
+                    }
+                } else {
+                    ui_error "info --var requires a variable name"
+                    return 1
+                }
             } else {
                 # Map from friendly name
                 set ropt [map_friendly_field_names $opt]
@@ -4395,7 +4410,7 @@ array set cmd_opts_array {
                  depends description epoch fullname heading homepage index license
                  line long_description
                  maintainer maintainers name patchfiles platform platforms portdir
-                 pretty replaced_by revision subports variant variants version}
+                 pretty replaced_by revision subports variant variants version {var 1}}
     contents    {size {units 1}}
     deps        {index no-build}
     rdeps       {index no-build full}
