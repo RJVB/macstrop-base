@@ -315,15 +315,17 @@ proc portconfigure::configure_start {args} {
     global configure.ccache ccache_dir ccache_size macportsuser
     if {${configure.ccache}} {
         # Create ccache directory with correct permissions with root privileges
-        elevateToRoot "configure ccache"
-        if {[catch {
-                file mkdir ${ccache_dir}
-                file attributes ${ccache_dir} -owner ${macportsuser} -permissions 0755
-            } result]} {
-            ui_warn "ccache_dir ${ccache_dir} could not be created; disabling ccache: $result"
-            set configure.ccache no
+        if {![file exists ${ccache_dir}] || [file type ${ccache_dir}] ne "directory"} {
+            elevateToRoot "configure ccache"
+            if {[catch {
+                    file mkdir ${ccache_dir}
+                    file attributes ${ccache_dir} -owner ${macportsuser} -permissions 0755
+                } result]} {
+                ui_warn "ccache_dir ${ccache_dir} could not be created; disabling ccache: $result"
+                set configure.ccache no
+            }
+            dropPrivileges
         }
-        dropPrivileges
 
         # Initialize ccache directory with the given maximum size
         if {${configure.ccache}} {
