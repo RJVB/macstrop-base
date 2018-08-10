@@ -2829,6 +2829,12 @@ proc action_version { action portlist opts } {
 }
 
 
+proc action_environment { action portlist opts } {
+    set status [macports::environment]
+    return $status
+}
+
+
 proc action_platform { action portlist opts } {
     if {![macports::ui_isset ports_quiet]} {
         puts -nonewline "Platform: "
@@ -4263,6 +4269,7 @@ array set action_array [list \
     diagnose    [list action_diagnose       [ACTION_ARGS_NONE]] \
     \
     version     [list action_version        [ACTION_ARGS_NONE]] \
+    environment [list action_environment    [ACTION_ARGS_NONE]] \
     platform    [list action_platform       [ACTION_ARGS_NONE]] \
     \
     uninstall   [list action_uninstall      [ACTION_ARGS_PORTS]] \
@@ -4514,6 +4521,9 @@ proc parse_options { action ui_options_name global_options_name } {
             set opts [string range $arg 1 end]
             foreach c [split $opts {}] {
                 switch -- $c {
+                    e {
+                        set ui_options(ports_env) yes
+                    }
                     v {
                         set ui_options(ports_verbose) yes
                     }
