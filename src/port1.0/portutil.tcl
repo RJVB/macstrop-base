@@ -417,8 +417,8 @@ proc command_exec {command args} {
     if {[option macosx_deployment_target] ne ""} {
         set ${varprefix}.env_array(MACOSX_DEPLOYMENT_TARGET) [option macosx_deployment_target]
     }
-    set ${varprefix}.env_array(CC_PRINT_OPTIONS) "YES"
-    set ${varprefix}.env_array(CC_PRINT_OPTIONS_FILE) [file join [option workpath] ".CC_PRINT_OPTIONS"]
+    #set ${varprefix}.env_array(CC_PRINT_OPTIONS) "YES"
+    #set ${varprefix}.env_array(CC_PRINT_OPTIONS_FILE) [file join [option workpath] ".CC_PRINT_OPTIONS"]
     if {[option compiler.cpath] ne ""} {
         set ${varprefix}.env_array(CPATH) [join [option compiler.cpath] :]
     }
@@ -2689,7 +2689,8 @@ proc extract_archive_metadata {archive_location archive_type metadata_type} {
             set raw_contents [exec -ignorestderr [findBinary tar ${portutil::autoconf::tar_path}] -xO${qflag}f $archive_location ./+CONTENTS]
         }
         txz {
-            set raw_contents [exec -ignorestderr [findBinary tar ${portutil::autoconf::tar_path}] -xO${qflag}f $archive_location --use-compress-program [findBinary xz ""] ./+CONTENTS]
+#            set raw_contents [exec -ignorestderr [findBinary tar ${portutil::autoconf::tar_path}] -xO${qflag}f $archive_location --use-compress-program [findBinary xz ""] ./+CONTENTS]
+            set raw_contents [exec -ignorestderr [findBinary tar ${portutil::autoconf::tar_path}] -xOJ${qflag}f $archive_location ./+CONTENTS]
         }
         tlz {
             set raw_contents [exec -ignorestderr [findBinary tar ${portutil::autoconf::tar_path}] -xO${qflag}f $archive_location --use-compress-program [findBinary lzma ""] ./+CONTENTS]
