@@ -245,7 +245,7 @@ proc portconfigure::configure_get_cppflags {} {
     if {[option compiler.limit_flags]} {
         return ""
     } else {
-        return -I${prefix}/include
+        return -isystem${prefix}/include
     }
 }
 default configure.ldflags       {[portconfigure::configure_get_ldflags]}
@@ -254,7 +254,11 @@ proc portconfigure::configure_get_ldflags {} {
     if {[option compiler.limit_flags]} {
         return -Wl,-headerpad_max_install_names
     } else {
-        return "-L${prefix}/lib -Wl,-headerpad_max_install_names"
+        if {[option os.platform] eq "darwin"} {
+            return "-L${prefix}/lib -Wl,-headerpad_max_install_names"
+        } else {
+            return "-L${prefix}/lib -Wl,--enable-new-dtags -Wl,-rpath,${prefix}/lib"
+        }
     }
 }
 default configure.libs          {}
