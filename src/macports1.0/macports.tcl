@@ -1607,6 +1607,9 @@ proc macports::worker_init {workername portpath porturl portbuildpath options va
     $workername alias _portnameactive _portnameactive
     $workername alias get_actual_cxx_stdlib macports::get_actual_cxx_stdlib
     $workername alias shellescape macports::shellescape
+    ## RJVB
+    $workername alias get_logfile macports::get_logfile
+    $workername alias flush_logfile macports::flush_logfile
 
     # New Registry/Receipts stuff
     $workername alias registry_new registry::new_entry
@@ -5843,6 +5846,24 @@ proc macports::shellescape {arg} {
     # may not be an exhaustive list of safe characters but it is allowed
     # to put a backslash in front of safe characters too.
     return [regsub -all -- {[^A-Za-z0-9.:@%/+=_-]} $arg {\\&}]
+}
+
+## RJVB
+# return the logfile name, or an empty string
+proc macports::get_logfile {} {
+	if {[info exists ::debuglogname]} {
+		return $::debuglogname
+	} else {
+		return ""
+	}
+}
+proc macports::flush_logfile {} {
+	if {[info exists ::debuglog]} {
+		flush $::debuglog
+		return yes
+	} else {
+		return no
+	}
 }
 
 ##
