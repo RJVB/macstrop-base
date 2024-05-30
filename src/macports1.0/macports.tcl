@@ -3815,13 +3815,19 @@ proc macports::_target_needs_deps {target} {
         configure -
         build -
         test -
+        srpm -
         destroot -
         install -
         activate -
+        rpm -
+        dpkg -
         dmg -
         mdmg -
         pkg -
-        mpkg {return 1}
+        mpkg -
+        rpm -
+        dpkg -
+        srpm {return 1}
         default {return 0}
     }
 }

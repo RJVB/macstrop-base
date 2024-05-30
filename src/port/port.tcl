@@ -4396,6 +4396,9 @@ array set action_array [list \
     mdmg        [list action_target         [ACTION_ARGS_PORTS]] \
     mpkg        [list action_target         [ACTION_ARGS_PORTS]] \
     pkg         [list action_target         [ACTION_ARGS_PORTS]] \
+    dpkg        [list action_target         [ACTION_ARGS_PORTS]] \
+    rpm         [list action_target         [ACTION_ARGS_PORTS]] \
+    srpm        [list action_target         [ACTION_ARGS_PORTS]] \
     \
     quit        [list action_exit           [ACTION_ARGS_NONE]] \
     exit        [list action_exit           [ACTION_ARGS_NONE]] \
@@ -4496,6 +4499,7 @@ array set cmd_opts_array {
     reclaim     {enable-reminders disable-reminders}
     fetch       {no-mirrors}
     bump        {patch}
+    dpkg        {no-deps}
 }
 
 ##
