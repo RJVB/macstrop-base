@@ -898,10 +898,14 @@ proc append_to_environment_value {command key args} {
 # debugging purposes.
 proc environment_array_to_string {environment_array} {
     upvar 1 ${environment_array} env_array
-    foreach {key value} [array get env_array] {
-        lappend env_list $key='$value'
+    if {[array size env_array] > 0} {
+        foreach {key value} [array get env_array] {
+            lappend env_list $key='$value'
+        }
+        return "\n[join [lsort $env_list] "\n"]"
+    } else {
+        return ""
     }
-    return "\n[join [lsort $env_list] "\n"]"
 }
 
 ########### Distname utility functions ###########
