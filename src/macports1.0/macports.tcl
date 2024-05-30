@@ -322,6 +322,13 @@ proc ui_message {priority prefix args} {
        }
     } 
 
+    # adopt msg priority if the current phase equals the current priority
+    # this can only happen for ui_info during `port info` (currently).
+    if {[info exists macports::current_phase]
+        && ${macports::current_phase} eq ${priority}} {
+        set priority "msg"
+    }
+
     foreach chan $macports::channels($priority) {
         if {[lindex $args 0] eq "-nonewline"} {
             puts -nonewline $chan $prefix[lindex $args 1]
