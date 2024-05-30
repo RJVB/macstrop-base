@@ -77,7 +77,9 @@ option_proc configure.objcxxflags portconfigure::stdlib_trace
 proc portconfigure::should_add_stdlib {} {
     set has_stdlib [expr {[option configure.cxx_stdlib] ne ""}]
     set is_clang [string match *clang* [option configure.cxx]]
-    return [expr {$has_stdlib && $is_clang}]
+    set is_clazy [string match *clazy* [option configure.cxx]]
+    set is_gccok  [string match {*g*-mp-[7]*} [option configure.cxx]]
+    return [expr {$has_stdlib && ($is_clang || $is_clazy || $is_gccok)}]
 }
 proc portconfigure::should_add_cxx_abi {} {
     # prior to OS X Mavericks, libstdc++ was the default C++ runtime, so
@@ -351,6 +353,7 @@ proc portconfigure::configure_start {args} {
         {^llvm-gcc-4\.2$}                          {Xcode LLVM-GCC 4.2}
         {^macports-clang$}                         {MacPorts Clang (port select)}
         {^macports-clang-(\d+(?:\.\d+)?)$}         {MacPorts Clang %s}
+        {^macports-clazy-(\d+(?:\.\d+)?)$}         {MacPorts Clazy %s}
         {^macports-gcc$}                           {MacPorts GCC (port select)}
         {^macports-gcc-(\d+(?:\.\d+)?)$}           {MacPorts GCC %s}
         {^macports-llvm-gcc-4\.2$}                 {MacPorts LLVM-GCC 4.2}
@@ -723,6 +726,7 @@ proc portconfigure::compiler_port_name {compiler} {
     set valid_compiler_ports {
         {^apple-gcc-(\d+)\.(\d+)$}                                                    {apple-gcc%s%s}
         {^macports-clang-(\d+(?:\.\d+)?)$}                                            {clang-%s}
+        {^macports-clazy-(\d+(?:\.\d+)?)$}                                            {clazy-%s}
         {^macports-(llvm-)?gcc-(\d+)(?:\.(\d+))?$}                                    {%sgcc%s%s}
         {^macports-(mpich|openmpi|mpich-devel|openmpi-devel)-default$}                {%s-default}
         {^macports-(mpich|openmpi|mpich-devel|openmpi-devel)-clang$}                  {%s-clang}
@@ -1432,6 +1436,15 @@ proc portconfigure::configure_get_compiler {type {compiler {}}} {
             objcxx  { return ${prefix_frozen}/bin/clang++${suffix} }
         }
     } elseif {[regexp {^macports-clang(-\d+(?:\.\d+)?)$} $compiler -> suffix]} {
+        set suffix "-mp${suffix}"
+        switch $type {
+            cc      -
+            objc    { return ${prefix_frozen}/bin/clang${suffix} }
+            cxx     -
+            objcxx  { return ${prefix_frozen}/bin/clang++${suffix} }
+            cpp     { return ${prefix_frozen}/bin/clang-cpp${suffix} }
+        }
+    } elseif {[regexp {^macports-clazy(-\d+\.\d+)?$} $compiler -> suffix]} {
         set suffix "-mp${suffix}"
         switch $type {
             cc      -
