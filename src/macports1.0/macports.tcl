@@ -918,10 +918,10 @@ proc mportinit {{up_ui_options {}} {up_options {}} {up_variations {}}} {
                         set sources_default [concat [list $url] $flags]
                     }
                 }
-                if {[string match rsync://*rsync.macports.org/release/ports/ $url]} {
-                    ui_warn "MacPorts is configured to use an unsigned source for the ports tree.\
-Please edit sources.conf and change '$url' to '[string range $url 0 end-6]tarballs/ports.tar'."
-                }
+#                 if {[string match rsync://*rsync.macports.org/release/ports/ $url]} {
+#                     ui_warn "MacPorts is configured to use an unsigned source for the ports tree.\
+# Please edit sources.conf and change '$url' to '[string range $url 0 end-6]tarballs/ports.tar'."
+#                 }
                 lappend sources [concat [list $url] $flags]
                 if {[info exists macports::ui_options(ports_env)]} {
                     ui_msg "$macports::ui_prefix $sources_conf: [lindex $sources end]"
