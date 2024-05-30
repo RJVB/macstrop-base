@@ -4025,7 +4025,7 @@ proc action_portcmds { action portlist opts } {
                     set editor_var "ports_${action}_editor"
                     if {[info exists local_options($editor_var)]} {
                         set editor [join $local_options($editor_var)]
-                    } else {
+                    } elseif {![macports::global_option_isset ports_force]} {
                         foreach ed { MP_EDITOR VISUAL EDITOR } {
                             if {[info exists env($ed)]} {
                                 set editor $env($ed)
@@ -4035,7 +4035,14 @@ proc action_portcmds { action portlist opts } {
                     }
 
                     # Use a reasonable canned default if no editor specified or set in env
-                    if { $editor eq "" } { set editor "/usr/bin/vi" }
+                    # or the user used the -f option to bypass any custom settings.
+                    if { $editor eq "" } {
+                        if {[file exists ${macports::prefix}/bin/vim]} {
+                            set editor "${macports::prefix}/bin/vim"
+                        } else {
+                            set editor "/usr/bin/vi"
+                        }
+                    }
 
                     # Invoke the editor
                     if {[catch {exec -ignorestderr >@stdout <@stdin {*}$editor $portfile} result]} {
