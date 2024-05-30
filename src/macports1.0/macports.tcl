@@ -1220,6 +1220,19 @@ match macports.conf.default."
                     set macports::build_arch i386
                 }
             }
+        } elseif {$os_platform eq "linux"} {
+            try {
+                if {[string match *64-bit* [exec lscpu]]} {
+                    ui_msg "build_arch x86_64"
+                    set macports::build_arch x86_64
+                } else {
+                    ui_msg "build_arch i386"
+                    set macports::build_arch i386
+                }
+            } catch {{*} eCode eMessage} {
+                ui_debug "Error setting macports::build_arch: $eMessage"
+                set macports::build_arch {}
+            }
         } else {
             set macports::build_arch {}
         }
