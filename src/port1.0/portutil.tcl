@@ -2783,7 +2783,8 @@ proc extract_archive_metadata {archive_location archive_type metadata_type} {
             set raw_contents [exec -ignorestderr [findBinary tar ${portutil::autoconf::tar_path}] -xO${qflag}f $archive_location ./+CONTENTS]
         }
         txz {
-            set raw_contents [exec -ignorestderr [findBinary tar ${portutil::autoconf::tar_path}] -xO${qflag}f $archive_location --use-compress-program [findBinary xz ""] ./+CONTENTS]
+#            set raw_contents [exec -ignorestderr [findBinary tar ${portutil::autoconf::tar_path}] -xO${qflag}f $archive_location --use-compress-program [findBinary xz ""] ./+CONTENTS]
+            set raw_contents [exec -ignorestderr [findBinary tar ${portutil::autoconf::tar_path}] -xOJ${qflag}f $archive_location ./+CONTENTS]
         }
         tlz {
             set raw_contents [exec -ignorestderr [findBinary tar ${portutil::autoconf::tar_path}] -xO${qflag}f $archive_location --use-compress-program [findBinary lzma ""] ./+CONTENTS]
