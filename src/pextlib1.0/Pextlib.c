@@ -111,6 +111,8 @@ extern char **environ;
 
 #ifndef HAVE_SETMODE
 #include "setmode.h"
+#else
+#include <bsd/unistd.h>
 #endif
 
 __attribute__((format(printf, 3, 0)))
