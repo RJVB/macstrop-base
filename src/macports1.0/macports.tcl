@@ -908,7 +908,7 @@ proc mportinit {{up_ui_options {}} {up_options {}} {up_variations {}}} {
             if {[regexp $sources_conf_source_re $line _ url flags]} {
                 set flags [split $flags ,]
                 foreach flag $flags {
-                    if {$flag ni [list nosync default]} {
+                    if {$flag ni [list nosync default own_portgroups_first]} {
                         ui_warn "$sources_conf source '$line' specifies invalid flag '$flag'"
                     }
                     if {$flag eq "default"} {
@@ -1594,6 +1594,9 @@ proc macports::worker_init {workername portpath porturl portbuildpath options va
     $workername alias getportresourcepath macports::getportresourcepath
     $workername alias getportlogpath macports::getportlogpath
     $workername alias getdefaultportresourcepath macports::getdefaultportresourcepath
+    $workername alias getlocalporttreelist macports::getlocalporttreelist
+    $workername alias getlocaltreeoptions macports::getlocaltreeoptions
+    $workername alias getallporttrees macports::getallporttrees
     $workername alias getprotocol macports::getprotocol
     $workername alias getportdir macports::getportdir
     $workername alias findBinary macports::findBinary
@@ -4889,6 +4892,44 @@ proc macports::get_actual_cxx_stdlib {binaries} {
     }
 }
 
+##
+# @return the list of local port trees
+#
+proc macports::getlocalporttreelist {} {
+    global macports::sources
+    set sourcetreelist {}
+    foreach source $sources {
+        if {[macports::getprotocol $source] eq "file"} {
+            lappend sourcetreelist [string range [lindex ${source} 0] 7 end]
+        }
+    }
+    return ${sourcetreelist}
+}
+
+##
+# @return the options for local port tree @param tree
+#
+proc macports::getlocaltreeoptions {path} {
+    global macports::sources
+    set sourcetreelist {}
+    set path [file normalize ${path}]
+    foreach source $sources {
+        set spath [file normalize [string range [lindex ${source} 0] 7 end]]
+        if {${spath} eq ${path}} {
+            return [lrange ${source} 1 end]
+        }
+    }
+    return {}
+}
+
+proc macports::getallporttrees {} {
+    global macports::sources
+    set sourcetreelist {}
+    foreach source $sources {
+        lappend sourcetreelist [lindex ${source} 0]
+    }
+    return ${sourcetreelist}
+}
 
 ##
 # Execute the rev-upgrade scan and attempt to rebuild all ports found to be
