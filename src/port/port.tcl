@@ -2525,9 +2525,16 @@ proc action_activate { action portlist opts } {
     }
     foreachport $portlist {
         set composite_version [composite_version $portversion [array get variations]]
+        array set actoptions [array get options]
+        set force 0
+        if ([info exists actoptions(ports_force)]) {
+            if ([string is true -strict $actoptions(ports_force)]) {
+                set force 1
+            }
+        }
         if {![info exists options(ports_activate_no-exec)]
             && ![catch {set ilist [registry::installed $portname $composite_version]}]
-            && [llength $ilist] == 1} {
+            && ([llength $ilist] == 1 && !$force)} {
 
             set i [lindex $ilist 0]
             set regref [registry::entry open $portname [lindex $i 1] [lindex $i 2] [lindex $i 3] [lindex $i 5]]
