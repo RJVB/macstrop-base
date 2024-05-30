@@ -2,6 +2,9 @@ srcdir = @srcdir@
 VPATH  = @srcdir@
 
 include ../../Mk/macports.autoconf.mk
+# for some reason, Tcl's pkgIndex.tcl generation crashes in the MacPorts.so
+# init procedure when built with LTO (on Linux at least).
+CFLAGS += -fno-lto
 
 SRCS=		macports.tcl macports_dlist.tcl macports_util.tcl \
 		macports_autoconf.tcl diagnose.tcl reclaim.tcl selfupdate.tcl
