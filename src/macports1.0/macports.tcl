@@ -210,8 +210,8 @@ proc macports::ch_logging {mport} {
 
     set ::debuglogname $logname
 
-    # Append to the file if it already exists
-    set ::debuglog [open $::debuglogname a]
+    # Truncate to the file if it already exists
+    set ::debuglog [open $::debuglogname w]
     puts $::debuglog version:1
 
     ui_debug "Starting logging for $portname @$portinfo(version)_$portinfo(revision)$portinfo(canonical_active_variants)"
