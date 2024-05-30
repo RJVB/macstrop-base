@@ -1446,9 +1446,9 @@ match macports.conf.default."
         set default_source_url [lindex $sources_default 0]
         if {[macports::getprotocol $default_source_url] eq "file" || [macports::getprotocol $default_source_url] eq "rsync"} {
             set default_portindex [macports::getindex $default_source_url]
-            if {[file exists $default_portindex] && [clock seconds] - [file mtime $default_portindex] > 1209600} {
-                ui_warn "port definitions are more than two weeks old, consider updating them by running 'port selfupdate'."
-            }
+#             if {[file exists $default_portindex] && [clock seconds] - [file mtime $default_portindex] > 1209600} {
+#                 ui_warn "port definitions are more than two weeks old, consider updating them by running 'port selfupdate'."
+#             }
         }
     }
 
