@@ -1558,7 +1558,8 @@ proc target_run {ditem} {
 
                 # For {} blocks in the Portfile, export DEVELOPER_DIR to prevent Xcode binaries if shouldn't be used
                 set ::env(DEVELOPER_DIR) [option configure.developer_dir]
-                if {$result == 0} {
+                set is_stub [string match *setup_stub_linux [info proc stub::setup_stub_linux]]
+                if {$result == 0 && $is_stub == 0} {
                     foreach pre [ditem_key $ditem pre] {
                         ui_debug "Executing $pre"
                         set result [catch {$pre $targetname} errstr]
@@ -1577,7 +1578,7 @@ proc target_run {ditem} {
                     set errinfo $::errorInfo
                 }
 
-                if {$result == 0} {
+                if {$result == 0 && $is_stub == 0} {
                     foreach post [ditem_key $ditem post] {
                         ui_debug "Executing $post"
                         set result [catch {$post $targetname} errstr]
