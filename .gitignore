@@ -57,3 +57,5 @@ pkgIndex.tcl
 !vendor/tcllib*/**/pkgIndex.tcl
 
 /dist/
+*.rej
+*orig
